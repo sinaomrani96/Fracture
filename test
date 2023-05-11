@@ -1,88 +1,139 @@
 
 [Mesh]
-  type = GeneratedMesh
-  dim = 2
-  nx = 500
-  ny = 20
-  ymax = 6
-  xmax = 20
+  type = FileMesh
+  file = 'coarse.e'
+  block_id = '1 2 3'
+  block_name = 'fracture matrix1 matrix2'
+
+  boundary_id = '1 2'
+  boundary_name = 'bottom top'
 []
 
 [GlobalParams]
   PorousFlowDictator = dictator
-  gravity = '0 -9.8 0'
-[]
-
-[AuxVariables]
-  [saturation_gas]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [frac_water_in_liquid]
-    initial_condition = 1.0
-  []
-  [frac_water_in_gas]
-    initial_condition = 0.0
-  []
-  [hys_order]
-    family = MONOMIAL
-    order = CONSTANT
-  []
-[]
-
-[AuxKernels]
-  [saturation_gas]
-    type = PorousFlowPropertyAux
-    variable = saturation_gas
-    property = saturation
-    phase = 1
-    execute_on = timestep_end
-  []
-  [hys_order]
-    type = PorousFlowPropertyAux
-    variable = hys_order
-    property = hysteresis_order
-  []
+  gravity = '0 0 0'
 []
 
 [Variables]
-  [pwater]
-    initial_condition = 20E6
+  [pp]
+    initial_condition = 1e6
+    scaling = 1e7
   []
-  [pgas]
-    initial_condition = 20.1E6
+  [sat]
+    initial_condition = 0
+    scaling = 1e-8
   []
+[]
+
+[AuxVariables]
+
+  [massfrac1]
+    family = MONOMIAL
+    order = CONSTANT
+    initial_condition = 1
+  []
+  [massfrac2]
+    family = MONOMIAL
+    order = CONSTANT
+    initial_condition = 0
+  []
+[]
+
+
+
+[BCs]
+  [co2_injection1]
+    type = DirichletBC
+    boundary = bottom
+    variable = sat    
+    value = 1 
+  []
+  [rp]
+    type = DirichletBC
+    value = 1e6
+    variable = pp
+    boundary = top
+  []
+  [lp]
+    type = DirichletBC
+    value = 1e6
+    variable = pp
+    boundary = bottom
+  []
+  [topco2]
+    type = DirichletBC
+    boundary = top
+    variable = sat   
+    value = 0 
+  []
+ # [right_water]
+ #   type = PorousFlowPiecewiseLinearSink
+ #   boundary = right
+ #   variable = pp
+ #   fluid_phase = 0
+ #   pt_vals = '0 1E9'
+ #   multipliers = '0 1E9'
+ #   PT_shift = 1E6
+ #   mass_fraction_component = 0
+ #   use_mobility = true
+ #   use_relperm = false
+ #   flux_function = 10 # 1/L
+ # []
+
 []
 
 [Kernels]
   [mass0]
     type = PorousFlowMassTimeDerivative
     fluid_component = 0
-    variable = pwater
+    variable = pp
   []
-  [flux0]
-    type = PorousFlowAdvectiveFlux
-    fluid_component = 0
-    variable = pwater
+  [adv0]
+    type = PorousFlowFluxLimitedTVDAdvection
+    advective_flux_calculator = advective_flux_calculator_0
+   # type = PorousFlowAdvectiveFlux
+   # fluid_component = 0
+    variable = pp
   []
   [mass1]
     type = PorousFlowMassTimeDerivative
     fluid_component = 1
-    variable = pgas
+    variable = sat
   []
-  [flux1]
-    type = PorousFlowAdvectiveFlux
-    fluid_component = 1
-    variable = pgas
+  [adv1]
+    type = PorousFlowFluxLimitedTVDAdvection
+    advective_flux_calculator = advective_flux_calculator_1
+  #  type = PorousFlowAdvectiveFlux
+  #  fluid_component = 1
+    variable = sat
   []
 []
 
 [UserObjects]
   [dictator]
     type = PorousFlowDictator
-    porous_flow_vars = 'pgas pwater'
+    porous_flow_vars = 'pp sat'
     number_fluid_phases = 2
     number_fluid_components = 2
+  []
+  [pc]
+    type = PorousFlowCapillaryPressureBC
+    pe = 1e4
+    lambda = 2
+    #type = PorousFlowCapillaryPressureConst
+   
+  []
+  [advective_flux_calculator_0]
+    type = PorousFlowAdvectiveFluxCalculatorUnsaturatedMultiComponent
+    flux_limiter_type = VanLeer
+    fluid_component = 0
+    phase = 0
+  []
+  [advective_flux_calculator_1]
+    type = PorousFlowAdvectiveFluxCalculatorUnsaturatedMultiComponent
+    flux_limiter_type = VanLeer
+    fluid_component = 1
+    phase = 1
   []
 []
 
@@ -109,143 +160,111 @@
     interpolated_properties = 'density viscosity enthalpy internal_energy'
     fluid_property_file = co2_tabulated_11.csv
   []
+  [simple_fluid1]
+    type = SimpleFluidProperties
+    bulk_modulus = 2e9
+    density0 = 1000
+    thermal_expansion = 0
+    viscosity = 1e-3
+  []
+ # [simple_fluid2]
+  #  type = SimpleFluidProperties
+   # bulk_modulus = 2e9
+   # density0 = 700
+  #  thermal_expansion = 0
+ #   viscosity = 1e-5
+#  []
 []
 
 [Materials]
+  [permeability_fracture]
+    type = PorousFlowPermeabilityConst
+    permeability = '1.8e-11 0 0 0 1.8e-11 0 0 0 1.8e-11'   # 1.8e-11 = a * kf
+    block = 'fracture'
+  []
+  [permeability_matrix]
+    type = PorousFlowPermeabilityConst
+    permeability = '1e-20 0 0 0 1e-20 0 0 0 1e-20'
+    block = 'matrix1 matrix2'
+  []
+  [poro_fracture]
+    type = PorousFlowPorosityConst
+    porosity = 6e-4   # = a * phif
+    block = 'fracture'
+  []
+  [poro_matrix]
+    type = PorousFlowPorosityConst
+    porosity = 0.1
+    block = 'matrix1 matrix2'
+  []
   [temperature]
     type = PorousFlowTemperature
-    temperature = 293.15
+    temperature = 323.15
   []
-  [massfrac]
+  [saturation_calculator]
+    type = PorousFlow2PhasePS
+    phase0_porepressure = pp
+    phase1_saturation = sat
+    capillary_pressure = pc
+  []
+  [massfrac1]
     type = PorousFlowMassFraction
-    mass_fraction_vars = 'frac_water_in_liquid frac_water_in_gas'
+    mass_fraction_vars = 'massfrac1 massfrac2'
   []
-  [water]
+  [simple_fluid_qpw]
     type = PorousFlowSingleComponentFluid
-    fp = tabulated_water
+    fp = simple_fluid1
     phase = 0
   []
-  [co2]
+  [simple_fluid_qp]
     type = PorousFlowSingleComponentFluid
-    fp = tabulated_co2
+    fp = simple_fluid1
     phase = 1
-  []
-  [porosity]
-    type = PorousFlowPorosityConst
-    porosity = 0.2
-  []
-  [permeability]
-    type = PorousFlowPermeabilityConst
-    permeability = '1e-12 0 0 0 1e-12 0 0 0 1e-12'
   []
   [relperm_water]
     type = PorousFlowRelativePermeabilityCorey
-    n = 2
+    n = 1
     phase = 0
     s_res = 0.1
-    sum_s_res = 0.2
+    sum_s_res = 0.1
   []
+
   [relperm_gas]
-    type = PorousFlowRelativePermeabilityBC
-    nw_phase = true
-    lambda = 2
-    s_res = 0.1
-    sum_s_res = 0.2
+    type = PorousFlowRelativePermeabilityCorey
+    n = 1
+    s_res = 0
+    sum_s_res = 0.1
     phase = 1
   []
-  [hys_order_material]
-    type = PorousFlowHysteresisOrder
-  []
-  [pc]
-    type = PorousFlow2PhaseHysPP
-    alpha_d = 1E-6
-    alpha_w = 7E-6
-    n_d = 2.4
-    n_w = 2.8
-    S_l_min = 0.05
-    S_lr = 0.1
-    S_gr_max = 0.1
-    Pc_max = 1E6
-    high_ratio = 0.9
-    low_extension_type = quadratic
-    high_extension_type = power
-    phase0_porepressure = pwater
-    phase1_porepressure = pgas
-  []
+
 []
 
-[BCs]
-  [co2_injection]
-    type = PorousFlowSink
-    boundary = left
-    variable = pgas 
-    flux_function = -1E-2 
-  []
 
-  [right_water]
-    type = DirichletBC
-    variable = pwater
-    boundary = 'right'
-    value = 20E6
-
-  []
-
-  [right_co2]
-	  type = DirichletBC
-    variable = pgas
-    boundary = 'right'
-    value = 20E6
-  []
-[]
-
-[Preconditioning]
-  active = 'preferred'
-  [basic]
-    type = SMP
-    full = true
-    petsc_options = '-snes_converged_reason -ksp_diagonal_scale -ksp_diagonal_scale_fix -ksp_gmres_modifiedgramschmidt -snes_linesearch_monitor'
-    petsc_options_iname = '-ksp_type -pc_type -sub_pc_type -sub_pc_factor_shift_type -pc_asm_overlap'
-    petsc_options_value = 'gmres asm lu NONZERO 2'
-  []
-  [preferred]
-    type = SMP
-    full = true
-    petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
-    petsc_options_value = 'lu mumps'
-  []
+[Debug]
+  show_var_residual_norms = true
 []
 
 [Executioner]
   type = Transient
   solve_type = NEWTON
-  nl_abs_tol = 1E-13
-  nl_rel_tol = 1E-10
-  end_time = 1e5
+  petsc_options_iname = '-pc_type -ksp_type  -ksp_gmres_restart'
+  petsc_options_value = 'none gmres 1000' 
+  end_time = 5e3
+  dtmax = 10
   [TimeStepper]
     type = IterationAdaptiveDT
-    dt = 1E4
-    growth_factor = 1.1
+    dt = 1
   []
-[]
-
-[VectorPostprocessors]
-  [pps]
-    type = LineValueSampler
-    warn_discontinuous_face_values = false
-    start_point = '0 0 0'
-    end_point = '20 0 0'
-    num_points = 20
-    sort_by = x
-    variable = 'pgas pwater saturation_gas'
-  []
+  l_max_its = 100
+  l_abs_tol = 1e-20
+  nl_max_its = 40
+  nl_rel_tol = 1e-14
+  nl_abs_tol = 1e-15
 []
 
 [Outputs]
-  print_linear_residuals = false
-  perf_graph = true
-  exodus = true 
   [out]
-    type = CSV
-    execute_on = final
+    type = Exodus
+    execute_on = 'initial timestep_end'
   []
 []
