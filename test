@@ -23,8 +23,6 @@
     []
   []
   
-  [AuxKernels]
-  
   [Variables]
     [pwater]
       initial_condition = 20e6
@@ -46,13 +44,11 @@
       type = PorousFlowMassTimeDerivative
       fluid_component = 2
       variable = pwater
-      save_in = d1
     []
     [flux0]
       type = PorousFlowAdvectiveFlux
       fluid_component = 2
       variable = pwater
-      save_in = d2
     []
     [diff0]
       type = PorousFlowDispersiveFlux
@@ -60,19 +56,16 @@
       variable = pwater
       disp_long = '0 0'
       disp_trans = '0 0'
-      save_in = d3
     []
     [mass1]
       type = PorousFlowMassTimeDerivative
       fluid_component = 1
       variable = tracer
-      save_in = d4
     []
     [flux1]
       type = PorousFlowAdvectiveFlux
       fluid_component = 1
       variable = tracer
-      save_in = d5
     []
     [diff1]
       type = PorousFlowDispersiveFlux
@@ -80,19 +73,16 @@
       variable = tracer
       disp_long = '0 0'
       disp_trans = '0 0'
-      save_in = d6
     []
     [mass2]
       type = PorousFlowMassTimeDerivative
       fluid_component = 0
       variable = zi
-      save_in = d7
     []
     [flux2]
       type = PorousFlowAdvectiveFlux
       fluid_component = 0
       variable = zi
-      save_in = d8
     []
     [diff2]
       type = PorousFlowDispersiveFlux
@@ -100,7 +90,6 @@
       variable = zi
       disp_long = '0 0'
       disp_trans = '0 0'
-      save_in = d9
     []  
   []
   
