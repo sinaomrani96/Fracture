@@ -16,17 +16,18 @@
   []
   
   [AuxVariables]
-    [xnacl]
+    [xnaclm]
       family = MONOMIAL
       order = CONSTANT
       initial_condition = 0
     []
   []
   
+  
   [Variables]
     [pwater]
       initial_condition = 20e6
-      #scaling = 1e-2
+      scaling = 1e-3
     []
     [zi]
       initial_condition = 0
@@ -34,7 +35,7 @@
     []
     [tracer]
       initial_condition =  0
-    #  scaling = 1e-2
+      scaling = 1e-4
     []
   []
   
@@ -42,17 +43,17 @@
   [Kernels]
     [mass0]
       type = PorousFlowMassTimeDerivative
-      fluid_component = 2
+      fluid_component = 0
       variable = pwater
     []
     [flux0]
       type = PorousFlowAdvectiveFlux
-      fluid_component = 2
+      fluid_component = 0
       variable = pwater
     []
     [diff0]
       type = PorousFlowDispersiveFlux
-      fluid_component = 2
+      fluid_component = 0
       variable = pwater
       disp_long = '0 0'
       disp_trans = '0 0'
@@ -76,17 +77,17 @@
     []
     [mass2]
       type = PorousFlowMassTimeDerivative
-      fluid_component = 0
+      fluid_component = 2
       variable = zi
     []
     [flux2]
       type = PorousFlowAdvectiveFlux
-      fluid_component = 0
+      fluid_component = 2
       variable = zi
     []
     [diff2]
       type = PorousFlowDispersiveFlux
-      fluid_component = 0
+      fluid_component = 2
       variable = zi
       disp_long = '0 0'
       disp_trans = '0 0'
@@ -96,7 +97,7 @@
   [UserObjects]
     [dictator]
       type = PorousFlowDictator
-      porous_flow_vars = 'tracer pwater zi'
+      porous_flow_vars = 'pwater tracer zi'
       number_fluid_phases = 2
       number_fluid_components = 3
     []
@@ -111,16 +112,18 @@
     []
     [fs]
       type = PorousFlowBrineCO2
+      liquid_fluid_component = 0
+      liquid_phase_number = 0
       brine_fp = brine
       co2_fp = true_co2
-      capillary_pressure = pc
+      capillary_pressure = pc0
     []
   []
   
   [FluidProperties]
-    # [true_water]
-    #   type = Water97FluidProperties
-    # []
+    [true_water]
+      type = Water97FluidProperties
+    []
     # [tabulated_water]
     #   type = TabulatedFluidProperties
     #   fp = true_water
@@ -142,6 +145,7 @@
     []
     [brine]
       type = BrineFluidProperties
+      water_fp = true_water
     []
     # [s1]
     #   type = SimpleFluidProperties
@@ -159,18 +163,18 @@
   [Materials]
     [temperature]
       type = PorousFlowTemperature
-      temperature = '50'
+      temperature = 323
     []
 
-  [brineco2]
-    type = PorousFlowFluidState
-    gas_porepressure = 'pwater'
-    z = 'zi'
-    temperature_unit = Celsius
-    xnacl = xnacl
-    capillary_pressure = pc0
-    fluid_state = fs
-  []
+    [brineco2]
+      type = PorousFlowFluidState
+      gas_porepressure = 'pwater'
+      z = 'zi'
+      temperature_unit = Kelvin
+      xnacl = 0
+      capillary_pressure = pc
+      fluid_state = fs
+    [] 
     [porosity]
       type = PorousFlowPorosityConst
       porosity = '0.26'
@@ -180,11 +184,10 @@
       permeability = '1e-13 0 0 0 1e-13 0 0 0 1e-13'
     []
     [relperm_water]
-      type = PorousFlowRelativePermeabilityBC
-      nw_phase = false
-      lambda = 1
-      s_res = 0.1
-      sum_s_res = 0.2
+      type = PorousFlowRelativePermeabilityCorey
+      n = 4
+      s_res = 0.4
+      sum_s_res = 0.5
       phase = 0
     []
     [relperm_gas]
@@ -197,7 +200,7 @@
     []
     [diffusivity]
       type = PorousFlowDiffusivityConst
-      diffusion_coeff = '3e-9 2e-9 2e-9 3e-7 1e-8 1e-8'
+      diffusion_coeff = '1e-9 1e-9 1e-9 1e-9 1e-9 1e-9'
       tortuosity = '1 1'
     []
   []
@@ -255,9 +258,9 @@
       variable = tracer
       boundary = right
       fluid_phase = 0
-      pt_vals = '0 1E9'
-      multipliers = '0 1E9'
-      mass_fraction_component = 2
+      pt_vals = '-1e9 1e9'
+      multipliers = '-1e9 1e9'
+      mass_fraction_component = 1
       use_mobility = true
       use_relperm = true
       flux_function = 10 # 1/L
@@ -267,9 +270,9 @@
       variable = zi
       boundary = right
       fluid_phase = 1
-      pt_vals = '0 1E9'
-      multipliers = '0 1E9'
-      mass_fraction_component = 0
+      pt_vals = '-1e9 1e9'
+      multipliers = '-1e9 1e9'
+      mass_fraction_component = 2
       use_mobility = true
       use_relperm = true
       flux_function = 10 # 1/L
@@ -302,15 +305,12 @@
     type = Transient
     solve_type = NEWTON
     start_time = 0
-    end_time = 100
+    end_time = 3
     dtmax = 10
     
     [TimeStepper]
       type = IterationAdaptiveDT
       dt = 1
-      optimal_iterations = 6
-      time_t  = '0  150'
-      time_dt = '1  2'
     []
   
   # controls for linear iterations
@@ -323,7 +323,7 @@
   # controls for nonlinear iterations
     nl_max_its = 15
     nl_rel_tol = 1e-5
-    nl_abs_tol = 1e-5
+    nl_abs_tol = 1e-7
   []
   
 
